@@ -360,6 +360,35 @@ func (r *EvaluatorReconciler) findMatchingQueries(ctx context.Context, evaluator
 	return queries.Items, nil
 }
 
+// mergeEvaluationMetadata merges query metadata (labels and annotations) into evaluation metadata
+func (r *EvaluatorReconciler) mergeEvaluationMetadata(query *arkv1alpha1.Query, evaluator *arkv1alpha1.Evaluator) (map[string]string, map[string]string) {
+	// Merge labels: copy all labels from query, then set required labels (these take precedence)
+	evaluationLabels := make(map[string]string)
+	if query.Labels != nil {
+		for k, v := range query.Labels {
+			evaluationLabels[k] = v
+		}
+	}
+	// Required labels take precedence
+	evaluationLabels[annotations.Evaluator] = evaluator.Name
+	evaluationLabels[annotations.Query] = query.Name
+	evaluationLabels[annotations.Auto] = "true"
+
+	// Merge annotations: copy all annotations from query, then set required annotations (these take precedence)
+	annotationsMap := make(map[string]string)
+	if query.Annotations != nil {
+		for k, v := range query.Annotations {
+			annotationsMap[k] = v
+		}
+	}
+	
+	// Required annotations take precedence
+	annotationsMap[annotations.QueryGeneration] = fmt.Sprintf("%d", query.Generation)
+	annotationsMap[annotations.QueryPhase] = query.Status.Phase
+
+	return evaluationLabels, annotationsMap
+}
+
 // createEvaluationForQuery creates an evaluation for a specific query
 func (r *EvaluatorReconciler) createEvaluationForQuery(ctx context.Context, evaluator *arkv1alpha1.Evaluator, query *arkv1alpha1.Query) error {
 	log := logf.FromContext(ctx)
@@ -385,20 +414,16 @@ func (r *EvaluatorReconciler) createEvaluationForQuery(ctx context.Context, eval
 		return fmt.Errorf("failed to resolve parameters: %w", err)
 	}
 
+	// Merge query metadata into evaluation metadata
+	evaluationLabels, annotationsMap := r.mergeEvaluationMetadata(query, evaluator)
+
 	// Create new evaluation
 	evaluation := &arkv1alpha1.Evaluation{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      evaluationName,
-			Namespace: evaluator.Namespace,
-			Labels: map[string]string{
-				annotations.Evaluator: evaluator.Name,
-				annotations.Query:     query.Name,
-				annotations.Auto:      "true",
-			},
-			Annotations: map[string]string{
-				annotations.QueryGeneration: fmt.Sprintf("%d", query.Generation),
-				annotations.QueryPhase:      query.Status.Phase,
-			},
+			Name:        evaluationName,
+			Namespace:   evaluator.Namespace,
+			Labels:      evaluationLabels,
+			Annotations: annotationsMap,
 		},
 		Spec: arkv1alpha1.EvaluationSpec{
 			Type: "query",
@@ -452,12 +477,8 @@ func (r *EvaluatorReconciler) updateEvaluationForQuery(ctx context.Context, eval
 			return err
 		}
 
-		// Update annotations
-		if currentEval.Annotations == nil {
-			currentEval.Annotations = make(map[string]string)
-		}
-		currentEval.Annotations[annotations.QueryGeneration] = fmt.Sprintf("%d", query.Generation)
-		currentEval.Annotations[annotations.QueryPhase] = query.Status.Phase
+		// Update metadata to inherit from query
+		currentEval.Labels, currentEval.Annotations = r.mergeEvaluationMetadata(query, evaluator)
 
 		// Resolve and update parameters
 		parameters, err := r.resolveEvaluatorParameters(ctx, evaluator.Spec.Parameters, evaluator.Namespace)

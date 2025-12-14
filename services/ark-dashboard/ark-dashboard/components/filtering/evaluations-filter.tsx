@@ -31,6 +31,11 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 
+export interface LabelFilter {
+  key: string;
+  value: string;
+}
+
 export interface EvaluationFilters {
   search: string;
   status: string[];
@@ -40,6 +45,7 @@ export interface EvaluationFilters {
   scoreMin: string;
   scoreMax: string;
   evaluationType: string[]; // For enhanced filtering
+  labelFilters: LabelFilter[];
 }
 
 interface EvaluationFilterProps {
@@ -58,6 +64,7 @@ const DEFAULT_FILTERS: EvaluationFilters = {
   scoreMin: '',
   scoreMax: '',
   evaluationType: [],
+  labelFilters: [],
 };
 
 const STATUS_OPTIONS = [
@@ -114,6 +121,29 @@ export function EvaluationFilter({
     onFiltersChange(DEFAULT_FILTERS);
   };
 
+  const addLabelFilter = () => {
+    const newFilter: LabelFilter = {
+      key: '',
+      value: '',
+    };
+    updateFilter('labelFilters', [...filters.labelFilters, newFilter]);
+  };
+
+  const updateLabelFilter = (
+    index: number,
+    field: keyof LabelFilter,
+    value: string,
+  ) => {
+    const newLabelFilters = [...filters.labelFilters];
+    newLabelFilters[index] = { ...newLabelFilters[index], [field]: value };
+    updateFilter('labelFilters', newLabelFilters);
+  };
+
+  const removeLabelFilter = (index: number) => {
+    const newLabelFilters = filters.labelFilters.filter((_, i) => i !== index);
+    updateFilter('labelFilters', newLabelFilters);
+  };
+
   const getActiveFilterCount = () => {
     let count = 0;
     if (filters.search) count++;
@@ -123,6 +153,7 @@ export function EvaluationFilter({
     if (filters.passed !== 'all') count++;
     if (filters.scoreMin || filters.scoreMax) count++;
     if (filters.evaluationType.length > 0) count++;
+    if (filters.labelFilters.length > 0) count++;
     return count;
   };
 
@@ -237,6 +268,62 @@ export function EvaluationFilter({
                   );
                 })}
               </div>
+            </div>
+
+            <Separator />
+
+            {/* Label Filter */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Label</Label>
+              {filters.labelFilters.length === 0 ? (
+                <div className="text-muted-foreground rounded border border-dashed py-4 text-center">
+                  <p className="text-xs">No label filters configured</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filters.labelFilters.map((labelFilter, index) => {
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 rounded-lg border p-2">
+                        <Input
+                          placeholder="Label key"
+                          value={labelFilter.key || ''}
+                          onChange={e =>
+                            updateLabelFilter(index, 'key', e.target.value)
+                          }
+                          className="border-border h-8 flex-1 text-xs"
+                        />
+                        <span className="text-muted-foreground text-xs">:</span>
+                        <Input
+                          placeholder="Value"
+                          value={labelFilter.value}
+                          onChange={e =>
+                            updateLabelFilter(index, 'value', e.target.value)
+                          }
+                          className="border-border h-8 flex-1 text-xs"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeLabelFilter(index)}
+                          className="text-muted-foreground hover:text-destructive h-8 w-8 p-0">
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addLabelFilter}
+                className="w-full text-xs">
+                + Add Label Filter
+              </Button>
             </div>
 
             <Separator />
@@ -373,6 +460,18 @@ export function EvaluationFilter({
               />
             </Badge>
           )}
+          {filters.labelFilters.map((labelFilter, index) => {
+            if (!labelFilter.key || !labelFilter.value) return null;
+            return (
+              <Badge key={index} variant="secondary" className="gap-1 text-xs">
+                Label - {labelFilter.key} : {labelFilter.value}
+                <X
+                  className="h-3 w-3 cursor-pointer"
+                  onClick={() => removeLabelFilter(index)}
+                />
+              </Badge>
+            );
+          })}
         </div>
       )}
     </div>

@@ -123,6 +123,7 @@ export const EvaluationsSection = forwardRef<
     scoreMin: '',
     scoreMax: '',
     evaluationType: [],
+    labelFilters: [],
   });
   const router = useRouter();
 
@@ -158,6 +159,13 @@ export const EvaluationsSection = forwardRef<
       });
     }
   }, [listEvaluationsError, listEvaluationsData, listEvaluationsErrorObject]);
+
+  useEffect(() => {
+    const savedFilters = localStorage.getItem('evaluationFilters');
+    if (savedFilters) {
+      setFilters(JSON.parse(savedFilters));
+    }
+  }, []);
 
   const getEvaluatorDisplay = (
     evaluation: Evaluation | EvaluationDetailResponse,
@@ -283,6 +291,20 @@ export const EvaluationsSection = forwardRef<
     const specMode = spec?.type as string;
     const basicMode = (evaluation as Evaluation).type;
     return specMode || basicMode || 'unknown';
+  };
+
+  const getStatus = (evaluation: Evaluation | EvaluationDetailResponse) => {
+    // Try to get phase from basic evaluation first
+    let phase = (evaluation as Evaluation).phase;
+
+    // If not found, try to get from detailed response status
+    if (!phase) {
+      const detailedStatus = (evaluation as EvaluationDetailResponse)
+        ?.status as Record<string, unknown>;
+      phase = detailedStatus?.phase as string;
+    }
+
+    return phase || 'pending';
   };
 
   const getScoreDisplay = (
@@ -435,6 +457,39 @@ export const EvaluationsSection = forwardRef<
       }
     }
 
+    // Label filters
+    if (filters.labelFilters.length > 0) {
+      // Try to get metadata from detailed response first
+      const detailedEvaluation = evaluation as EvaluationDetailResponse;
+      const evaluationMetadata =
+        (detailedEvaluation?.metadata as Record<string, unknown>) ||
+        ((evaluation as Record<string, unknown>).metadata as
+          | Record<string, unknown>
+          | undefined);
+      const labels =
+        (evaluationMetadata?.labels as Record<string, string>) || {};
+
+      for (const labelFilter of filters.labelFilters) {
+        if (!labelFilter.key || !labelFilter.value) continue;
+
+        const labelValue = labels[labelFilter.key];
+        const filterValue = labelFilter.value.trim();
+
+        // If label doesn't exist, exclude this evaluation
+        if (labelValue === undefined || labelValue === null) {
+          return false;
+        }
+
+        // Compare label value with filter value (case-insensitive)
+        const labelValueStr = String(labelValue).toLowerCase();
+        const filterValueStr = filterValue.toLowerCase();
+
+        if (!labelValueStr.includes(filterValueStr)) {
+          return false;
+        }
+      }
+    }
+
     return true;
   });
 
@@ -516,20 +571,6 @@ export const EvaluationsSection = forwardRef<
     }
     return 0;
   });
-
-  const getStatus = (evaluation: Evaluation | EvaluationDetailResponse) => {
-    // Try to get phase from basic evaluation first
-    let phase = (evaluation as Evaluation).phase;
-
-    // If not found, try to get from detailed response status
-    if (!phase) {
-      const detailedStatus = (evaluation as EvaluationDetailResponse)
-        ?.status as Record<string, unknown>;
-      phase = detailedStatus?.phase as string;
-    }
-
-    return phase || 'pending';
-  };
 
   const getStatusBadge = (
     status: string | undefined,
@@ -883,7 +924,13 @@ export const EvaluationsSection = forwardRef<
           <div className="flex-1">
             <EvaluationFilter
               filters={filters}
-              onFiltersChange={setFilters}
+              onFiltersChange={newFilters => {
+                localStorage.setItem(
+                  'evaluationFilters',
+                  JSON.stringify(newFilters),
+                );
+                setFilters(newFilters);
+              }}
               availableEvaluators={getAvailableEvaluators()}
               availableTypes={getAvailableTypes()}
             />

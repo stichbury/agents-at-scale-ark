@@ -389,7 +389,7 @@ function QualityMetricCard({ metric }: { metric: QualityMetric }) {
     <Card
       className={`${metric.passed ? 'border-green-200 bg-green-50/30' : 'border-red-200 bg-red-50/30'} dark:bg-transparent`}>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-full ${
@@ -602,7 +602,7 @@ export function QualityEvaluationDisplay({
       {/* Overall Status */}
       <Card
         className={`${overallPassed ? 'border-green-200 bg-green-50/30' : 'border-red-200 bg-red-50/30'} dark:bg-transparent`}>
-        <CardHeader className="pb-6">
+        <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div

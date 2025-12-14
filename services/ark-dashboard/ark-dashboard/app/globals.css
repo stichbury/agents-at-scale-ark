@@ -132,7 +132,7 @@
   --card: var(--surface-bg01);
   --card-foreground: var(--text-primary);
 
-  --popover: var(--surface-bg02);
+  --popover: var(--surface-bg01);
   --popover-foreground: var(--text-primary);
 
   --primary: var(--text-primary);

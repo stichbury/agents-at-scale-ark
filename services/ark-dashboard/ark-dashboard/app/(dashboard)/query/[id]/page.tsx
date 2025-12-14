@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy } from 'lucide-react';
+import { Code, Copy } from 'lucide-react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
@@ -17,6 +17,12 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Tooltip,
@@ -365,6 +371,7 @@ function QueryDetailContent() {
   const nameFieldRef = useRef<HTMLInputElement>(null);
   const [toolSchema, setToolSchema] = useState<ToolDetail | null>(null);
   const [streaming, setStreaming] = useState(false);
+  const [showMetadata, setShowMetadata] = useState(false);
 
   // Copy schema to clipboard
   const copySchemaToClipboard = async () => {
@@ -674,9 +681,32 @@ function QueryDetailContent() {
                 New Query
               </Button>
             )}
+            {query.metadata && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMetadata(!showMetadata)}>
+                <Code className="h-4 w-4" />
+              </Button>
+            )}
           </>
         }
       />
+
+      <Sheet open={showMetadata} onOpenChange={setShowMetadata}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl">
+          <SheetHeader>
+            <SheetTitle>Query Metadata</SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-[calc(92vh)]">
+            <JsonDisplay
+              value={query.metadata}
+              className="rounded bg-gray-50 p-4 font-mono text-sm dark:bg-gray-900"
+            />
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
       <div className="flex h-full flex-col">
         {/* Query Details - Three Column Layout */}
         <div className="border-b bg-gray-50/30 px-4 py-3 dark:bg-gray-900/10">
